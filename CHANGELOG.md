@@ -8,6 +8,7 @@
 
 ## Changes since v6.0.0
 
+- [#561](https://github.com/oauth2-proxy/oauth2-proxy/pull/561) Create generic Authorization Header constructor (@JoelSpeed)
 - [#619](https://github.com/oauth2-proxy/oauth2-proxy/pull/619) Improve Redirect to HTTPs behaviour (@JoelSpeed)
 - [#654](https://github.com/oauth2-proxy/oauth2-proxy/pull/654) Close client connections after each redis test (@JoelSpeed)
 - [#542](https://github.com/oauth2-proxy/oauth2-proxy/pull/542) Move SessionStore tests to independent package (@JoelSpeed)
