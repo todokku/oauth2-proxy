@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"net/http"
+	"net"
 	"os"
 	"os/signal"
 	"runtime"
@@ -11,8 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/justinas/alice"
 	"github.com/oauth2-proxy/oauth2-proxy/pkg/apis/options"
 	"github.com/oauth2-proxy/oauth2-proxy/pkg/logger"
+	"github.com/oauth2-proxy/oauth2-proxy/pkg/middleware"
 	"github.com/oauth2-proxy/oauth2-proxy/pkg/validation"
 )
 
@@ -71,14 +73,24 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	var handler http.Handler
-	if opts.GCPHealthChecks {
-		handler = redirectToHTTPS(opts, gcpHealthcheck(LoggingHandler(oauthproxy)))
-	} else {
-		handler = redirectToHTTPS(opts, LoggingHandler(oauthproxy))
+	chain := alice.New()
+
+	if opts.ForceHTTPS {
+		_, httpsPort, err := net.SplitHostPort(opts.HTTPSAddress)
+		if err != nil {
+			logger.Fatalf("FATAL: invalid HTTPS address %q: %v", opts.HTTPAddress, err)
+		}
+		chain = chain.Append(middleware.NewRedirectToHTTPS(httpsPort))
 	}
+
+	if opts.GCPHealthChecks {
+		chain = chain.Append(gcpHealthcheck)
+	}
+
+	chain = chain.Append(LoggingHandler)
+
 	s := &Server{
-		Handler: handler,
+		Handler: chain.Then(oauthproxy),
 		Opts:    opts,
 		stop:    make(chan struct{}, 1),
 	}
