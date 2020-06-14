@@ -83,11 +83,20 @@ func main() {
 		chain = chain.Append(middleware.NewRedirectToHTTPS(httpsPort))
 	}
 
+	healthCheckPaths := []string{opts.PingPath}
+	healthCheckUserAgents := []string{opts.PingUserAgent}
 	if opts.GCPHealthChecks {
-		chain = chain.Append(gcpHealthcheck)
+		healthCheckPaths = append(healthCheckPaths, "/liveness_check", "/readiness_check")
+		healthCheckUserAgents = append(healthCheckUserAgents, "GoogleHC/1.0")
 	}
 
-	chain = chain.Append(LoggingHandler)
+	// To silence logging of health checks, register the health check handler before
+	// the logging handler
+	if opts.Logging.SilencePing {
+		chain = chain.Append(middleware.NewHealthCheck(healthCheckPaths, healthCheckUserAgents), LoggingHandler)
+	} else {
+		chain = chain.Append(LoggingHandler, middleware.NewHealthCheck(healthCheckPaths, healthCheckUserAgents))
+	}
 
 	s := &Server{
 		Handler: chain.Then(oauthproxy),
